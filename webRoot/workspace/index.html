@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Interface</title>
+    
+    <link rel="stylesheet" href="workspace.css">
+
+    <style>
+        
+    </style> 
+</head>
+<body>
+    <header>
+        <h1>Interactive Interface</h1>
+        <button id="executeButton">Execute</button>
+    </header>
+    <main>
+        <div id="inputArea">
+            <textarea id="textarea" placeholder="Enter your text here..."></textarea>
+            <div id="response">Server response will be shown here...</div>
+        </div>
+        <div id="sidebar">
+            <h3>Options</h3>
+            <div id="sidebarContent">
+                <ul>
+                    <li><input type="radio" name="option" id="option1"> Option 1</li>
+                    <li><input type="radio" name="option" id="option2"> Option 2</li>
+                    <li><input type="radio" name="option" id="option3"> Option 3</li>
+                </ul>
+            </div>
+            <div id="toggleButton">Toggle Sidebar</div>
+        </div>
+    </main>
+    <script>
+        document.getElementById('executeButton').addEventListener('click', function() {
+            let data = { element: "barium" };
+            fetch("/api/judgeReq", {
+                method: "POST",
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            }).then(res => {
+                console.log("Request complete! response:", res);
+            });
+
+            document.getElementById('response').innerText = 'Executing... Server response will be shown here.';
+        });
+
+        document.querySelector('#sidebar h3').addEventListener('click', function() {
+            const content = document.getElementById('sidebarContent');
+            if (content.style.display === 'none') {
+                content.style.display = 'block';
+            } else {
+                content.style.display = 'none';
+            }
+        });
+
+        document.getElementById('toggleButton').addEventListener('click', function() {
+            const sidebar = document.getElementById('sidebar');
+            if (sidebar.style.transform === 'translateX(0)') {
+                sidebar.style.transform = 'translateX(250px)';
+            } else {
+                sidebar.style.transform = 'translateX(0)';
+            }
+        });
+
+        // Initially hide the sidebar content
+        document.getElementById('sidebarContent').style.display = 'none';
+    </script>
+</body>
+</html>

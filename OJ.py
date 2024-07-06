@@ -14,10 +14,10 @@ class OJService:
         self.__latestRegistrationNumber__ += 1
         return self.__latestRegistrationNumber__
 
-    def addTask(self, zid, code): # add the judgement request in queue
+    def addTask(self, zid, codeFile): # add the judgement request in queue
         from time import time
         taskInfo = self.OJTask.TaskInfo()
-        taskInfo.code = code
+        taskInfo.codeFile = codeFile
         taskInfo.zid = zid
         taskInfo.time = time()
         taskInfo.rId = self.__getRId__()
@@ -25,7 +25,7 @@ class OJService:
 
         ojtask.inQueue(self)
 
-        return
+        return True
     
     def statrOJServer(self):
         t = threading.Thread(target=self.__loop__)
@@ -45,7 +45,7 @@ class OJService:
     class testPoint: # in FUTURE
         def __init__(self) -> None:
             self.questionID = None
-            self.code = None
+
 
         def __readIOFiles__():
             
@@ -59,7 +59,7 @@ class OJService:
         # class
         def __init__(self, TaskInfo) -> None:
             self.rId = TaskInfo.rId # registration number
-            self.code = TaskInfo.code # python script
+            self.codeFile = TaskInfo.codeFile # python script
             self.problemId = TaskInfo.problemId 
             self.status = TASK_INIT
             self.testPoints = [] # test points array, to save test result in FUTURE
@@ -69,7 +69,7 @@ class OJService:
         
         def do(self):
             self.statusUpdate(TASK_RUNNING)
-            print(f"start the judging task {self.code}")
+            print(f"start the judging task {self.codeFile}")
             # python sys call
 
             return # status code
@@ -82,7 +82,7 @@ class OJService:
 
         def checkTaskInfo(self):
             info = self.TaskInfo()
-            info.code = self.code
+            info.codeFile = self.codeFile
             info.rId = self.rId
             info.problemId = self.problemId
             info.status = self.status
@@ -98,7 +98,7 @@ class OJService:
         class TaskInfo:
             def __init__(self) -> None: # convert an OJTask object to a brief description
                 self.rId = None # registration number
-                self.code = None
+                self.codeFile = None
                 self.status = None
                 self.problemId = None
                 self.testPoints = None

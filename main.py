@@ -3,6 +3,7 @@ import urllib.parse
 import OJ
 import os
 from pathlib import Path
+import json
 
 # Initialize the OJ service
 oj = OJ.OJService()
@@ -13,12 +14,15 @@ print(oj.__taskList__[0].time)
 # HTTP APIs class
 class HTTPApis:
     @classmethod
-    def judgeReq(cls, zid, code):
+    def judgeReq(cls, zid, codeFile):
         try:
-            oj.addTask(zid=zid, code=code)
+            success = oj.addTask(zid=zid, codeFile=codeFile) # True or false
         except:
-            raise "Fail to add an OJ Task"
-        return 
+            raise "Fail to call OJ Service"
+        if success:
+            return {"judgeReq": True}
+
+
 
 BASE_DIRECTORY = "./webRoot"
 
@@ -30,54 +34,100 @@ class HttpHandler(BaseHTTPRequestHandler):
     def do_POST(self):
         self.response()
 
+
+
+
     def response(self):
         parsedURL = urllib.parse.urlparse(self.path)
-        path = Path(parsedURL.path)
-        pathLev = path.parts # Path levels
+
         queryDict = urllib.parse.parse_qs(parsedURL.query) # Query dictionary
-        
-        if os.path.isfile(BASE_DIRECTORY + parsedURL.path):
-            self.send_response(200)
-            self.send_header('Content-type', 'text/html')
-            self.end_headers()
-            with open(BASE_DIRECTORY + parsedURL.path, 'rb') as file:
-                self.wfile.write(file.read())
 
-        elif os.path.isfile(BASE_DIRECTORY + parsedURL.path + ".html"):
-            self.send_response(200)
-            self.send_header('Content-type', 'text/html')
-            self.end_headers()
-            with open(BASE_DIRECTORY + parsedURL.path + ".html", 'rb') as file:
-                self.wfile.write(file.read())
 
-        elif os.path.isfile(BASE_DIRECTORY + parsedURL.path + "/index.html"):
-            self.send_response(200)
-            self.send_header('Content-type', 'text/html')
-            self.end_headers()
-            with open(BASE_DIRECTORY + parsedURL.path + "/index.html", 'rb') as file:
-                self.wfile.write(file.read())
-
-        elif self.logic(pathLev):
+        if parsedURL.path.startswith('/api/'): # is calling an API
+            self.handle_api(parsedURL)
             return
         
-        else:
+        if self.serve_static_file(parsedURL.path): # requesting a static file
+            return
+        
+        self.send_response(404) # cannot find the file, neigher API
+        self.send_header('Content-type', 'text/html')
+        self.end_headers()
+        self.wfile.write(b"404 Not Found")
+    
 
-            self.send_response(404)
-            self.send_header('Content-type', 'text/html')
-            self.end_headers()
-            self.wfile.write(b"404 Not Found")
 
-    def logic(self, path):
-        match path:
-            case ('\\', 'api', 'judgeReq'):
-                print(self.request)
-                HTTPApis.judgeReq("z1234567", "print(\"Hello\")")
+
+    def handle_api(self, parsedURL): # define all the APIs
+
+        content_length = int(self.headers['Content-Length'])
+        post_data = self.rfile.read(content_length)
+
+        try:
+            data = json.loads(post_data)
+            
+            if parsedURL.path == "/api/judgeReq": # /api/judgeReq
+                zid = data.get("zid")
+                codeFile = data.get("codeFile")
+
+                response = HTTPApis.judgeReq(zid, codeFile)
+                
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps(response).encode())
+
                 return True
-            case _:
-                return False
+
+            else:
+                self.send_response(404) # API cannot be found
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({"error": "API Not Found"}).encode())
+
+        except json.JSONDecodeError:
+            self.send_response(400)
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps({"error": "Invalid JSON"}).encode())
+
+
+
+    def get_content_type(self, file_path):
+        ext = os.path.splitext(file_path)[1]
+        return {
+            '.html': 'text/html',
+            '.css': 'text/css',
+            '.js': 'application/javascript',
+            '.json': 'application/json',
+            '.jpg': 'image/jpeg',
+            '.jpeg': 'image/jpeg',
+            '.png': 'image/png',
+            '.gif': 'image/gif'
+        }.get(ext, 'application/octet-stream')
+
+    def serve_static_file(self, url_path):
+        possible_paths = [
+            BASE_DIRECTORY + url_path,
+            BASE_DIRECTORY + url_path + "/index.html"
+        ]
+
+        for file_path in possible_paths:
+            if os.path.isfile(file_path):
+                contentType = self.get_content_type(file_path)
+                self.send_response(200)
+                self.send_header('Content-type', contentType)
+                self.end_headers()
+
+                with open(file_path, 'rb') as file:
+                    self.wfile.write(file.read())
+
+                return True
+        return False
+
 
 # Create and start the multi-threaded HTTP server
-httpd = ThreadingHTTPServer(('127.0.0.1', 8080), HttpHandler) 
+httpd = ThreadingHTTPServer(('192.168.154.230', 8080), HttpHandler) 
 httpd.serve_forever() # Start HTTP service
 
 

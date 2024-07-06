@@ -18,7 +18,7 @@
     </header>
     <main>
         <div id="inputArea">
-            <textarea id="textarea" placeholder="Enter your text here..."></textarea>
+            <textarea id="codingArea" placeholder="Enter your text here..."></textarea>
             <div id="response">Server response will be shown here...</div>
         </div>
         <div id="sidebar">
@@ -35,7 +35,10 @@
     </main>
     <script>
         document.getElementById('executeButton').addEventListener('click', function() {
-            let data = { element: "barium" };
+
+            let codeFileValue = document.getElementById('codingArea').value;
+            let data = { zid: "z5609371", codeFile: codeFileValue};
+
             fetch("/api/judgeReq", {
                 method: "POST",
                 headers: { 'Content-Type': 'application/json' },

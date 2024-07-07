@@ -1,11 +1,13 @@
 import cookies
 import queue
 import threading
+import time
 
+TEST_THREAD_LIMIT = 1
 
 class OJService:
     def __init__(self) -> None:
-        self.__latestRegistrationNumber__ = 0
+        self.__latestRegistrationNumber__ = -1
         self.__taskList__ = []
         self.__carInUse__ = False # use for wificar porj only, since there is only one car
         self.__taskWaitingQue__ = queue.Queue()
@@ -14,32 +16,37 @@ class OJService:
         self.__latestRegistrationNumber__ += 1
         return self.__latestRegistrationNumber__
 
-    def addTask(self, zid, codeFile): # add the judgement request in queue
+    def addTask(self, zID, codeFile, problemId=""): # add the judgement request in queue
         from time import time
         taskInfo = self.OJTask.TaskInfo()
         taskInfo.codeFile = codeFile
-        taskInfo.zid = zid
+        taskInfo.problemId = problemId
+        taskInfo.zID = zID
         taskInfo.time = time()
-        taskInfo.rId = self.__getRId__()
+        taskInfo.rID = self.__getRId__()
         ojtask = self.OJTask(TaskInfo=taskInfo)
 
         ojtask.inQueue(self)
 
-        return True
+        return taskInfo
     
     def statrOJServer(self):
+        for _ in range(TEST_THREAD_LIMIT):
+            t = threading.Thread(target=self.judger) 
+            t.start()
+
         t = threading.Thread(target=self.__loop__)
-        t.start()
         return 
 
 
     def __loop__(self): # here, it is not necessary to use multi-treating. One car only.
-        while(1):
-            self.__do__()
+        while(True):
+            time.sleep(1)
 
-    def __do__(self): # no need to have treat lock, only one test treat
-        currentTask = self.__taskWaitingQue__.get()
-        currentTask.do()
+    def judger(self): # no need to have treat lock, only one test treat
+        while(True):
+            currentTask = self.__taskWaitingQue__.get()
+            currentTask.do()
 
 
     class testPoint: # in FUTURE
@@ -58,18 +65,18 @@ class OJService:
     class OJTask:
         # class
         def __init__(self, TaskInfo) -> None:
-            self.rId = TaskInfo.rId # registration number
-            self.codeFile = TaskInfo.codeFile # python script
+            self.rID = TaskInfo.rID # registration number
+            self.codeFile = TaskInfo.codeFile # python script, file name in FUTURE
             self.problemId = TaskInfo.problemId 
             self.status = TASK_INIT
             self.testPoints = [] # test points array, to save test result in FUTURE
-            self.zid = TaskInfo.zid
+            self.zID = TaskInfo.zID
             self.time = TaskInfo.time
             return
         
         def do(self):
             self.statusUpdate(TASK_RUNNING)
-            print(f"start the judging task {self.codeFile}")
+            print(f"start the judging task {self.rID}")
             # python sys call
 
             return # status code
@@ -82,12 +89,12 @@ class OJService:
 
         def checkTaskInfo(self):
             info = self.TaskInfo()
-            info.codeFile = self.codeFile
-            info.rId = self.rId
+            info.codeFile = self.codeFile # need to convert in FUTURE
+            info.rID = self.rID
             info.problemId = self.problemId
             info.status = self.status
             info.testPoints = self.testPoints
-            info.zid = self.zid
+            info.zID = self.zID
             info.time = self.time
             return info
         
@@ -97,17 +104,17 @@ class OJService:
 
         class TaskInfo:
             def __init__(self) -> None: # convert an OJTask object to a brief description
-                self.rId = None # registration number
+                self.rID = None # registration number
                 self.codeFile = None
                 self.status = None
                 self.problemId = None
                 self.testPoints = None
-                self.zid = None
+                self.zID = None
                 self.time = None
                 return 
 
-
-    def __task_status_int2str__(statusCodeInt):
+    @classmethod
+    def __task_status_int2str__(cls, statusCodeInt):
         match statusCodeInt:
             case 0:
                 return "Init"
@@ -137,4 +144,5 @@ TASK_FINISHED = 3
 TASK_ERR_1 = -1 # Return python error to the client
 TASK_ERR_2 = -2 # Post Waring to Teacher
 TASK_ERR_3 = -3 # Delete the task and warn the client
-SYS_ERR_0 = -100 # System is Offline
+SYS_ERR_100 = -100 # System is Offline
+SYS_ERR_101 = -101 # Cannot find task

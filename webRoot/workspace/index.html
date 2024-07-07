@@ -4,24 +4,22 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Interactive Interface</title>
-    
     <link rel="stylesheet" href="workspace.css">
-
-    <style>
-        
-    </style> 
 </head>
 <body>
     <header>
         <h1>Interactive Interface</h1>
-        <button id="executeButton">Execute</button>
+        <div id="headRight">
+            <button id="executeButton" onclick="submitCodeFile()">Execute</button>
+        </div>
+        
     </header>
     <main>
         <div id="inputArea">
             <textarea id="codingArea" placeholder="Enter your text here..."></textarea>
             <div id="response">Server response will be shown here...</div>
         </div>
-        <div id="sidebar">
+        <div id="sidebar" style="transform: translateX(0px);">
             <h3>Options</h3>
             <div id="sidebarContent">
                 <ul>
@@ -32,23 +30,162 @@
             </div>
             <div id="toggleButton">Toggle Sidebar</div>
         </div>
+        <div id="appearButton" style="display: none;">&#9664;</div> <!-- Left arrow -->
     </main>
     <script>
-        document.getElementById('executeButton').addEventListener('click', function() {
+        var task = null
 
+        function Task(rID){
+            this.rID = rID;
+            this.codeFile = null;
+            this.time = null;
+            this.status = null;
+            this.problemID = null;
+            this.testPoints = null;
+
+            this.init = async function(){ // update task object
+                try {
+                    const res = await fetch(`/api/taskInfo?q=${this.rID}`, {
+                        method: 'GET',
+                        credentials: 'include', // automatically insert cookies
+                        headers: { 'Accept': 'application/json'}
+                    });
+
+                    if (!res.ok) { //slow connection
+                        // document.getElementById()
+                        // button.innerText = "Retry";
+                        throw new Error('Network response was not ok ' + res.statusText);
+                    }
+
+                    const reqData = await res.json(); // 将响应解析为JSON
+
+                    this.status = reqData['status'];
+                    this.codeFile = reqData['codeFile'];
+                    this.time = reqData['time'];
+                    this.problemID = reqData['problemID'];
+                    this.testPoints = reqData['testPoints'];
+                    this.zID = reqData['zID']
+
+                    console.log("taskOBJ Init:" + JSON.stringify(reqData, null, 2));
+                    live();
+                    // setInterval(live, 500);
+                } catch(error) {
+                    console.error('There was a problem with the fetch operation:', error);
+                    document.getElementById('response').innerText = 'An error occurred: ' + error.message;
+                    return null;
+                }
+            }
+            
+            this.upDate = async function(){ // update task object
+                try {
+                    const res = await fetch(`/api/taskInfo?q=${this.rID}`, {
+                        method: 'GET',
+                        credentials: 'include', // automatically insert cookies
+                        headers: { 'Accept': 'application/json'}
+                    });
+
+                    if (!res.ok) { //slow connection
+                        // document.getElementById()
+                        // button.innerText = "Retry";
+                        throw new Error('Network response was not ok ' + res.statusText);
+                    }
+
+                    const reqData = await res.json(); // 将响应解析为JSON
+
+                    this.status = reqData['status'];
+
+                    
+                    var taskStatus = document.createElement("div");
+                    // taskStatus.
+                    // const intervalId = setInterval(sayHelloRepeatedly, 2000);
+                    // 在这里处理解析后的数据，例如将其显示在页面上
+                    document.getElementById('response').innerText = JSON.stringify(reqData, null, 2);
+
+                } catch(error) {
+                    console.error('There was a problem with the fetch operation:', error);
+                    document.getElementById('response').innerText = 'An error occurred: ' + error.message;
+                    return null;
+                }
+            }
+            function TestPoint(){
+                var status = null;
+            }
+
+            this.init();
+
+        }
+
+        async function live(){
+            task.upDate();
+            var taskID = document.getElementById("TaskID");
+            taskID.innerText = `Task ID: ${task.rID}`;
+
+            var taskStatus = document.getElementById("TaskStatus");
+            taskStatus.innerText = task.status;
+            switch (task.status) {
+                case "completed":
+                    taskStatus.style.backgroundColor = "green";
+                    break;
+                case "pending":
+                    taskStatus.style.backgroundColor = "yellow";
+                    break;
+                case "failed":
+                    taskStatus.style.backgroundColor = "red";
+                    break;
+                default:
+                    taskStatus.style.backgroundColor = "grey";
+            }
+        }
+
+        async function submitCodeFile() {
             let codeFileValue = document.getElementById('codingArea').value;
-            let data = { zid: "z5609371", codeFile: codeFileValue};
+            let postData = { zID: "z5609371", codeFile: codeFileValue};
+            var button = document.getElementById("executeButton");
+            button.innerText = "Uploading";
+            try {
+                const res = await fetch('/api/judgeReq', {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'text/python' },
+                    body: JSON.stringify(postData)
+                });
 
-            fetch("/api/judgeReq", {
-                method: "POST",
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
-            }).then(res => {
-                console.log("Request complete! response:", res);
-            });
+                if (!res.ok) {
+                    button.style.backgroundColor = "red";
+                    button.innerText = "Retry";
+                    throw new Error('Network response was not ok ' + res.statusText);
+                }
 
-            document.getElementById('response').innerText = 'Executing... Server response will be shown here.';
-        });
+                const reqData = await res.json(); // 将响应解析为JSON
+                console.log('Request complete! Response data:', reqData['rID']);
+                button.remove();
+
+                var taskID = document.createElement("div");
+                taskID.className = "taskInfo";
+                taskID.id = "TaskID";
+                document.getElementById("headRight").appendChild(taskID);
+                
+
+                var taskStatus = document.createElement("div");
+                taskStatus.className = "taskInfo";
+                taskStatus.id = "TaskStatus";
+                document.getElementById("headRight").appendChild(taskStatus);
+
+                task = new Task(reqData['rID']);
+
+                // 在这里处理解析后的数据，例如将其显示在页面上
+                document.getElementById('response').innerText = JSON.stringify(reqData, null, 2);
+
+            } catch(error) {
+                console.error('There was a problem with the fetch operation:', error);
+                document.getElementById('response').innerText = 'An error occurred: ' + error.message;
+                return null;
+            }
+        };
+
+
+        
+
 
         document.querySelector('#sidebar h3').addEventListener('click', function() {
             const content = document.getElementById('sidebarContent');
@@ -61,14 +198,22 @@
 
         document.getElementById('toggleButton').addEventListener('click', function() {
             const sidebar = document.getElementById('sidebar');
-            if (sidebar.style.transform === 'translateX(0)') {
-                sidebar.style.transform = 'translateX(250px)';
-            } else {
-                sidebar.style.transform = 'translateX(0)';
-            }
+            const appearButton = document.getElementById('appearButton');
+            sidebar.addEventListener('transitionend', function() {
+                    appearButton.style.display = 'flex';
+
+            }, { once: true }); // { once: true } 确保事件处理程序只执行一次
+            sidebar.style.transform = 'translateX(251px)';
+
         });
 
-        // Initially hide the sidebar content
+        document.getElementById('appearButton').addEventListener('click', function() {
+            const sidebar = document.getElementById('sidebar');
+            const appearButton = document.getElementById('appearButton');
+            sidebar.style.transform = 'translateX(0px)';
+            appearButton.style.display = 'none';
+        });
+
         document.getElementById('sidebarContent').style.display = 'none';
     </script>
 </body>

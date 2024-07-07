@@ -3,6 +3,7 @@ import urllib.parse
 import OJ
 import os
 from pathlib import Path
+import threading
 import json
 
 # Initialize the OJ service
@@ -14,13 +15,38 @@ print(oj.__taskList__[0].time)
 # HTTP APIs class
 class HTTPApis:
     @classmethod
-    def judgeReq(cls, zid, codeFile):
+    def judgeReq(cls, zID, codeFile):
         try:
-            success = oj.addTask(zid=zid, codeFile=codeFile) # True or false
+            task = oj.addTask(zID=zID, codeFile=codeFile) # True or false
         except:
-            raise "Fail to call OJ Service"
-        if success:
-            return {"judgeReq": True}
+            return {
+                "Success": False,
+                "Error": task
+            }
+        return {
+            "Success": True,
+            "rID": task.rID
+        }
+    
+    @classmethod
+    def taskInfo(cls, rID):
+        try:
+            res = oj.__taskList__[int(rID)].checkTaskInfo() # now, rIDs are continous numbers. update in FUTURE.
+            res.testPoints = []
+            return {
+                "codeFile": res.codeFile,
+                "rID": res.rID,
+                "problemId": res.problemId,
+                "status": OJ.OJService.__task_status_int2str__(res.status),
+                "testPoints": res.testPoints,
+                "zID": res.zID,
+                "time": res.time
+            }
+        except IndexError: # out of range
+            return {
+                "Success": False,
+                "Error": OJ.SYS_ERR_101
+            }
 
 
 
@@ -33,8 +59,6 @@ class HttpHandler(BaseHTTPRequestHandler):
         
     def do_POST(self):
         self.response()
-
-
 
 
     def response(self):
@@ -55,41 +79,68 @@ class HttpHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(b"404 Not Found")
     
-
-
-
-    def handle_api(self, parsedURL): # define all the APIs
-
-        content_length = int(self.headers['Content-Length'])
-        post_data = self.rfile.read(content_length)
-
+    def readJsonBody(self):
         try:
-            data = json.loads(post_data)
-            
-            if parsedURL.path == "/api/judgeReq": # /api/judgeReq
-                zid = data.get("zid")
-                codeFile = data.get("codeFile")
-
-                response = HTTPApis.judgeReq(zid, codeFile)
-                
-                self.send_response(200)
-                self.send_header('Content-type', 'application/json')
-                self.end_headers()
-                self.wfile.write(json.dumps(response).encode())
-
-                return True
-
-            else:
-                self.send_response(404) # API cannot be found
-                self.send_header('Content-type', 'application/json')
-                self.end_headers()
-                self.wfile.write(json.dumps({"error": "API Not Found"}).encode())
-
+            content_length = int(self.headers['Content-Length'])
+            post_data = self.rfile.read(content_length)
+            return json.loads(post_data)
+        
         except json.JSONDecodeError:
             self.send_response(400)
             self.send_header('Content-type', 'application/json')
             self.end_headers()
             self.wfile.write(json.dumps({"error": "Invalid JSON"}).encode())
+            return False
+
+
+
+    def handle_api(self, parsedURL): # define all the APIs
+
+        match parsedURL.path:
+            case "/api/judgeReq": # /api/judgeReq
+
+                data = self.readJsonBody()
+                if data == False: return
+
+
+                zID = data.get("zID")
+                codeFile = data.get("codeFile")
+
+                response = HTTPApis.judgeReq(zID, codeFile)
+                
+                self.send_response(200) # deal with error in FUTRUE
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+
+                # print(response)
+
+                self.wfile.write(json.dumps(response).encode())
+
+                return True
+            
+            case "/api/taskInfo":
+                queryDict = urllib.parse.parse_qs(parsedURL.query)
+                rID = queryDict['q'][0] # one task once CUTTENTLY
+
+                response = HTTPApis.taskInfo(rID=rID)
+
+                print(response)
+
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+
+                self.wfile.write(json.dumps(response).encode())
+
+                return True            
+
+            case _:
+                self.send_response(404) # API cannot be found
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({"error": "API Not Found"}).encode())
+
+
 
 
 

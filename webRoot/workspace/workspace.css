@@ -26,7 +26,7 @@ main {
     display: flex;
     flex-direction: column;
 }
-#textarea {
+#codingArea {
     flex: 1;
     padding: 10px;
     border: none;
@@ -48,10 +48,8 @@ main {
     flex-direction: column;
     transition: transform 0.3s ease;
     position: fixed;
-    top: 0;
     right: 0;
     height: 100vh;
-    transform: translateX(0);
 }
 #sidebar h3 {
     margin: 0;
@@ -72,10 +70,53 @@ main {
     background-color: #ddd;
     border-top: 1px solid #ccc;
 }
+#appearButton {
+    position: fixed;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    padding: 10px;
+    background-color: #ddd;
+    border: 1px solid #ccc;
+    cursor: pointer;
+    display: none;
+    height: 40px; /* Match the height of the toggleButton */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    align-content: center;
+}
+
 #executeButton {
+    font-size: 14px;
     padding: 10px 20px;
     background-color: #007bff;
     color: #fff;
     border: none;
     cursor: pointer;
+    display: flex;  /* 使用 flexbox 布局 */
+    align-items: center;  /* 垂直居中对齐 */
+    justify-content: center;
+}
+
+#headRight {
+    display: flex;
+    flex-direction: row;
+}
+
+#TaskStatus {
+    font-size: 14px;
+
+    display: flex;
+    width: auto;
+    height: auto;
+    color: #fff;
+    border: none;
+    display: flex;  /* 使用 flexbox 布局 */
+    align-items: center;  /* 垂直居中对齐 */
+    justify-content: center;
+}
+
+.taskInfo {
+    padding: 10px 20px;
 }

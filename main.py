@@ -7,10 +7,9 @@ import threading
 import json
 
 # Initialize the OJ service
-oj = OJ.OJService()
-oj.addTask("z123456789", "Code is here")
+oj = OJ.OJService(ojID="oj_demo", databaseRoot="./ojDatabase")
+oj.addTask("z123456789", "print(\"Hello OJ!!!\")")
 oj.statrOJServer() # start OJ service
-print(oj.__taskList__[0].time)
 
 # HTTP APIs class
 class HTTPApis:
@@ -178,7 +177,7 @@ class HttpHandler(BaseHTTPRequestHandler):
 
 
 # Create and start the multi-threaded HTTP server
-httpd = ThreadingHTTPServer(('192.168.154.230', 8080), HttpHandler) 
+httpd = ThreadingHTTPServer(('127.0.0.1', 8080), HttpHandler) 
 httpd.serve_forever() # Start HTTP service
 
 

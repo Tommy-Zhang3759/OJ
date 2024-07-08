@@ -2,38 +2,69 @@ import cookies
 import queue
 import threading
 import time
+import subprocess
+import urllib.parse
 
-TEST_THREAD_LIMIT = 1
+TEST_THREAD_LIMIT = 5
+CODE_DIR = "code/"
 
 class OJService:
-    def __init__(self) -> None:
+    def __init__(self, ojID, databaseRoot) -> None:
         self.__latestRegistrationNumber__ = -1
         self.__taskList__ = []
         self.__carInUse__ = False # use for wificar porj only, since there is only one car
         self.__taskWaitingQue__ = queue.Queue()
+        self.__fileHashtag__ = {} # rID to file name
+        self.ojID = ojID # should be string
+        if databaseRoot[-1] == '/':
+            self.dataBaseRoot = databaseRoot # it should be string
+        else:
+            self.dataBaseRoot = databaseRoot + '/' # as well, of course
 
     def __getRId__(self):
         self.__latestRegistrationNumber__ += 1
         return self.__latestRegistrationNumber__
+    
+    def __hashing__(self, key):
+        h = 2166136261  # FNV offset basis
+        fnv_prime = 16777619  # FNV prime
+
+        for char in key:
+            h = h ^ ord(char)  # XOR with the byte
+            h = (h * fnv_prime + h) & 0xffffffffffffffff  # Multiply by the prime and ensure it's a 64-bit value
+
+        return str(h)
+    
+    def realPath(self, path):
+        return self.dataBaseRoot + path
 
     def addTask(self, zID, codeFile, problemId=""): # add the judgement request in queue
         from time import time
         taskInfo = self.OJTask.TaskInfo()
-        taskInfo.codeFile = codeFile
         taskInfo.problemId = problemId
         taskInfo.zID = zID
         taskInfo.time = time()
         taskInfo.rID = self.__getRId__()
-        ojtask = self.OJTask(TaskInfo=taskInfo)
+
+        taskInfo.codeFile = CODE_DIR +\
+              self.__hashing__(f"{self.ojID}{taskInfo.problemId}\
+                               _{taskInfo.rID}_{taskInfo.zID}_{taskInfo.time}")
+        
+        with open(self.dataBaseRoot + taskInfo.codeFile, "w") as file:
+            print(codeFile, file=file)
+        
+        ojtask = self.OJTask(TaskInfo=taskInfo, server=self)
 
         ojtask.inQueue(self)
 
         return taskInfo
     
     def statrOJServer(self):
-        for _ in range(TEST_THREAD_LIMIT):
+        for i in range(TEST_THREAD_LIMIT):
             t = threading.Thread(target=self.judger) 
             t.start()
+            print(f"Judging Agent: %d started" %i)
+        print(f"OJ service started ojID: %s" %self.ojID)
 
         t = threading.Thread(target=self.__loop__)
         return 
@@ -64,7 +95,7 @@ class OJService:
 
     class OJTask:
         # class
-        def __init__(self, TaskInfo) -> None:
+        def __init__(self, TaskInfo, server) -> None:
             self.rID = TaskInfo.rID # registration number
             self.codeFile = TaskInfo.codeFile # python script, file name in FUTURE
             self.problemId = TaskInfo.problemId 
@@ -72,11 +103,35 @@ class OJService:
             self.testPoints = [] # test points array, to save test result in FUTURE
             self.zID = TaskInfo.zID
             self.time = TaskInfo.time
+            self.databaseRoot = server.dataBaseRoot
+            return
+        
+        def readFFS(self): # in FUTURE
+            self.realPath = None
             return
         
         def do(self):
             self.statusUpdate(TASK_RUNNING)
             print(f"start the judging task {self.rID}")
+            try:
+                process = subprocess.Popen(
+                    ['python', self.databaseRoot + self.codeFile], 
+                    stdout=subprocess.PIPE, 
+                    stderr=subprocess.PIPE
+                )
+                
+                while True:
+                    output = process.stdout.readline()
+                    if output == b'' and process.poll() is not None:
+                        break
+                    if output:
+                        print(output.decode().strip())
+                
+                rc = process.poll()
+                return rc
+            except Exception as e:
+                print(f"Error occurred: {e}")
+                return -1
             # python sys call
 
             return # status code
